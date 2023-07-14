@@ -5,6 +5,7 @@
 #include <Components/StaticMeshComponent.h>
 #include <PhysicsEngine/RadialForceComponent.h>
 #include "SMagicProjectile.h"
+#include <DrawDebugHelpers.h>
 
 // Sets default values
 ASExplosiveBarrel::ASExplosiveBarrel()
@@ -32,6 +33,7 @@ void ASExplosiveBarrel::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 
+	// Best place to set this kind of declaration
 	MeshComp->OnComponentHit.AddDynamic(this, &ASExplosiveBarrel::OnActorHit);
 }
 
@@ -44,14 +46,23 @@ void ASExplosiveBarrel::BeginPlay()
 
 void ASExplosiveBarrel::OnActorHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-	if (OtherActor->GetClass()->IsChildOf(ASMagicProjectile::StaticClass())) {
+	//if (OtherActor->GetClass()->IsChildOf(ASMagicProjectile::StaticClass())) {
 		RadialForceComp->FireImpulse();
-	}
+	//}
+
+		UE_LOG(LogTemp, Log, TEXT("ONActorHit in explosive Barrel"));
+
+		UE_LOG(LogTemp, Log, TEXT("ONActorHit : %s, at game time %f"), *GetNameSafe(OtherActor), GetWorld()->TimeSeconds);
+
+		FString CombinedString = FString::Printf(TEXT("Hit at location %s"), *Hit.ImpactPoint.ToString());
+
+		DrawDebugString(GetWorld(), Hit.ImpactPoint, CombinedString, nullptr, FColor::Green, true);
 }
 
 // Called every frame
 void ASExplosiveBarrel::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
 
 }

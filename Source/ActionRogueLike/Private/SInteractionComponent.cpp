@@ -3,6 +3,7 @@
 
 #include "SInteractionComponent.h"
 #include "SGameplayInterface.h"
+#include <DrawDebugHelpers.h>
 
 // Sets default values for this component's properties
 USInteractionComponent::USInteractionComponent()
@@ -33,7 +34,7 @@ void USInteractionComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 	// ...
 }
 
-void PrimaryInteract()
+void USInteractionComponent::PrimaryInteract()
 {
 	FCollisionObjectQueryParams ObjectQueryParams;
 	ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldDynamic);
@@ -44,21 +45,60 @@ void PrimaryInteract()
 	FRotator EyeRotation;
 	MyOwner->GetActorEyesViewPoint(EyeLocation, EyeRotation);
 
-	FVector End = EyeLocation + (EyeRotation.Vector() * 1000);
+	FVector End = EyeLocation + (EyeRotation.Vector() * 500);
 
+	// Line trace To interact with the first object in a line
+	/*
 	FHitResult Hit;
-	GetWorld()->LineTraceSingleByObjectType(Hit, EyeLocation, End, ObjectQueryParams);
-
+	/bool bBlockingHit = GetWorld()->LineTraceSingleByObjectType(Hit, EyeLocation, End, ObjectQueryParams);
 	AActor* HitActor = Hit.GetActor();
 	if (HitActor)
 	{
 		// The component found an object, validate if it is something we can interact with
-		if (HitActor->Implements<ISGameplayInterface>())
+		if (HitActor->Implements<USGameplayInterface>())
 		{
 			APawn* MyPawn = Cast<APawn>(MyOwner);
 
 			ISGameplayInterface::Execute_Interact(HitActor, MyPawn);
 		}
 	}
+	
+	FColor LineColor = bBlockingHit ? FColor::Blue : FColor::Red;
+	DrawDebugLine(GetWorld(), EyeLocation, End, LineColor, false, 2.0f, 2.0f);
+	
+	*/
+
+
+	// Alternative : Sphere trace
+	TArray<FHitResult> Hits;
+	FCollisionShape Shape;
+	float Radius = 30.0f;
+	Shape.SetSphere(Radius);
+
+	bool bBlockingHit = GetWorld()->SweepMultiByObjectType(Hits, EyeLocation, End, FQuat::Identity, ObjectQueryParams, Shape);
+
+	FColor LineColor = bBlockingHit ? FColor::Blue : FColor::Red;
+
+	for (FHitResult Hit : Hits)
+	{
+		AActor* HitActor = Hit.GetActor();
+		if (HitActor)
+		{
+			// The component found an object, validate if it is something we can interact with
+			if (HitActor->Implements<USGameplayInterface>())
+			{
+				APawn* MyPawn = Cast<APawn>(MyOwner);
+
+				ISGameplayInterface::Execute_Interact(HitActor, MyPawn);
+				break; // stop at the first interaction
+			}
+		}
+
+		DrawDebugSphere(GetWorld(), Hit.ImpactPoint, Radius, 32, LineColor, false, 2.0f);
+	}
+
+
+	DrawDebugLine(GetWorld(), EyeLocation, End, LineColor, false, 2.0f, 2.0f);
+	
 }
 

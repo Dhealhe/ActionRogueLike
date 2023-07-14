@@ -18,7 +18,7 @@ public:
 
 public:	
 
-	// Sets default values for this component's properties
+	// Sets default values for this component's properties 
 	USInteractionComponent();
 
 protected:
