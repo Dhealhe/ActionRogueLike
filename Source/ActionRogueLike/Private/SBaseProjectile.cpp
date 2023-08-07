@@ -5,6 +5,9 @@
 #include <Components/SphereComponent.h>
 #include <Particles/ParticleSystemComponent.h>
 #include <GameFramework/ProjectileMovementComponent.h>
+#include <Components/AudioComponent.h>
+#include <Sound/SoundCue.h>
+#include <Kismet/GameplayStatics.h>
 
 // Sets default values
 ASBaseProjectile::ASBaseProjectile()
@@ -26,6 +29,8 @@ ASBaseProjectile::ASBaseProjectile()
 	MovementComp->bInitialVelocityInLocalSpace = true;
 	MovementComp->ProjectileGravityScale = 0;
 
+	AudioComp = CreateDefaultSubobject<UAudioComponent>("AudioComp");
+
 }
 
 void ASBaseProjectile::OnActorHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
@@ -38,6 +43,7 @@ void ASBaseProjectile::Explode_Implementation()
 	if (ensure(IsValid(this)))
 	{
 		// Add whatever, probably a base implementation of sound / effect and whatever was defined for base hit
+		UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
 
 		Destroy();
 	}
@@ -48,6 +54,11 @@ void ASBaseProjectile::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	/*if (IsValid(FlightSoundComp))
+	{
+		FlightSoundComp->Play();
+	}*/
+
 }
 
 // Called every frame

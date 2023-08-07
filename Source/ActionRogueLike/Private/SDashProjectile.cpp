@@ -36,7 +36,7 @@ void ASDashProjectile::TeleportInstigator()
 	if (ensure(ActorToTeleport))
 	{
 		// Keep instigator rotation
-		ActorToTeleport->TeleportTo(GetActorLocation(), ActorToTeleport->GetActorRotation(), false, false);
+		ActorToTeleport->TeleportTo(GetActorLocation(), ActorToTeleport->GetActorRotation(), false, true);
 	}
 
 	// Destroy the actor (Here it is the projectile)

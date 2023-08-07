@@ -11,6 +11,7 @@ class UCameraComponent;
 class USpringArmComponent;
 class USInteractionComponent;
 class UAnimMontage;
+class USAttributeComponent;
 
 UCLASS()
 class ACTIONROGUELIKE_API ASCharacter : public ACharacter
@@ -54,6 +55,9 @@ protected:
 	UPROPERTY(VisibleAnywhere)
 	USInteractionComponent* InteractionComp;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	USAttributeComponent* AttributeComp;
+
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
@@ -74,6 +78,11 @@ protected:
 	void DashProjectile_TimeElapsed();
 
 	void PrimaryInteract();
+
+	UFUNCTION()
+	void OnHealthChanged(AActor* InstigatorActor, USAttributeComponent* OwningComp, float NewHealth, float Delta);
+
+	virtual void PostInitializeComponents() override;
 
 public:	
 	// Called every frame

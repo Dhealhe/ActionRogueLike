@@ -9,6 +9,7 @@
 #include <Engine/HitResult.h>
 #include <CollisionShape.h>
 #include <Kismet/KismetMathLibrary.h>
+#include "SAttributeComponent.h"
 
 // Sets default values
 ASCharacter::ASCharacter()
@@ -28,6 +29,15 @@ ASCharacter::ASCharacter()
 
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	bUseControllerRotationYaw = false;
+
+	AttributeComp = CreateDefaultSubobject<USAttributeComponent>("AttributeComp");
+
+}
+
+void ASCharacter::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+	AttributeComp->OnHealthChanged.AddDynamic(this, &ASCharacter::OnHealthChanged);
 }
 
 // Called when the game starts or when spawned
@@ -43,7 +53,7 @@ void ASCharacter::MoveForward(float value)
 	ControlRot.Pitch = 0.0f;
 	ControlRot.Roll = 0.0f;
 	
-	AddMovementInput(ControlRot.Vector(), value);
+AddMovementInput(ControlRot.Vector(), value);
 }
 
 void ASCharacter::MoveRight(float value)
@@ -62,43 +72,35 @@ void ASCharacter::MoveRight(float value)
 
 void ASCharacter::SpawnProjectileAttack(TSubclassOf<AActor> ProjectileClass)
 {
-	FCollisionObjectQueryParams ObjectQueryParams;
-	ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldDynamic);
-	ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldStatic);
-
 	FVector HandLocation = GetMesh()->GetSocketLocation("Muzzle_01");
 	FVector CameraLocation = CameraComp->GetComponentLocation();
 	FRotator CameraRotation = CameraComp->GetComponentRotation();
-	FVector End = CameraLocation + (CameraRotation.Vector() * 5000);
+	FVector TraceEnd = CameraLocation + (CameraRotation.Vector() * 5000);
 
-	// Sweep for potential targets
-	TArray<FHitResult> Hits;
-	FCollisionShape Shape;
-	float Radius = 15.0f;
-	Shape.SetSphere(Radius);
-	GetWorld()->SweepMultiByObjectType(Hits, CameraLocation, End, FQuat::Identity, ObjectQueryParams, Shape);
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
 
-	FTransform SpawnTM;
-	if (!Hits.IsEmpty()) {
-		for (FHitResult Hit : Hits)
-		{
-			// If Something was hit, use that first hit as the target of our attack
-			FVector HitLocation = Hit.Location;
-			SpawnTM = FTransform(UKismetMathLibrary::FindLookAtRotation(HandLocation, HitLocation), HandLocation);
-			break;
-		}
-	}
-	else
-	{
-		// If nothing was hit, use the trace end as the target
-		SpawnTM = FTransform(UKismetMathLibrary::FindLookAtRotation(HandLocation, End), HandLocation);
-	}
+	FCollisionObjectQueryParams ObjectQueryParams;
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldDynamic);
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldStatic);
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_Pawn);
 
-
-	// Define the spawn parameters
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	SpawnParams.Instigator = this;
+
+	// Sweep for potential targets
+	FHitResult Hit;
+	FCollisionShape Shape;
+	float Radius = 15.0f;
+	Shape.SetSphere(Radius);
+	if (GetWorld()->SweepSingleByObjectType(Hit, CameraLocation, TraceEnd, FQuat::Identity, ObjectQueryParams, Shape, Params))
+	{
+		TraceEnd = Hit.ImpactPoint;
+	}
+
+	//Will either use the impact point of the first encountered element or the end of the trace
+	FTransform SpawnTM = FTransform(UKismetMathLibrary::FindLookAtRotation(HandLocation, TraceEnd), HandLocation);
 
 	// Spawn the projectile
 	GetWorld()->SpawnActor<AActor>(ProjectileClass, SpawnTM, SpawnParams);
@@ -145,6 +147,20 @@ void ASCharacter::PrimaryInteract()
 	if (InteractionComp)
 	{
 		InteractionComp->PrimaryInteract();
+	}
+}
+
+void ASCharacter::OnHealthChanged(AActor* InstigatorActor, USAttributeComponent* OwningComp, float NewHealth, float Delta)
+{
+	if (NewHealth <= 0.0f && Delta < 0.0f)
+	{
+		APlayerController* PC = Cast<APlayerController>(GetController());
+		DisableInput(PC);
+	}
+	else
+	{
+		GetMesh()->SetScalarParameterValueOnMaterials("TimeToHit", GetWorld()->TimeSeconds);
+		GetMesh()->SetScalarParameterValueOnMaterials("HitFlashSpeed", 8.0f);
 	}
 }
 
